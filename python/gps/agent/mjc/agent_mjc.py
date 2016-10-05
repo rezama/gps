@@ -2,16 +2,17 @@
 import copy
 
 import numpy as np
-
+import struct
+import IPython
 import mjcpy
-
+import time
 from gps.agent.agent import Agent
 from gps.agent.agent_utils import generate_noise, setup
 from gps.agent.config import AGENT_MUJOCO
 from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
         END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES, \
         END_EFFECTOR_POINT_JACOBIANS, ACTION, RGB_IMAGE, RGB_IMAGE_SIZE, \
-        CONTEXT_IMAGE, CONTEXT_IMAGE_SIZE
+        CONTEXT_IMAGE, CONTEXT_IMAGE_SIZE, ACTIVATIONS, ACTION_OPEN, ACTION_NOISE, SENSORDATA
 
 from gps.sample.sample import Sample
 
@@ -62,21 +63,32 @@ class AgentMuJoCo(Agent):
                 self._model.append(self._world[i].get_model())
 
         for i in range(self._hyperparams['conditions']):
-            for j in range(len(self._hyperparams['pos_body_idx'][i])):
-                idx = self._hyperparams['pos_body_idx'][i][j]
-                self._model[i]['body_pos'][idx, :] += \
-                        self._hyperparams['pos_body_offset'][i]
+#            for j in range(len(self._hyperparams['pos_body_idx'][i])):
+#                idx = self._hyperparams['pos_body_idx'][i][j]
+#                self._model[i]['body_pos'][idx, :] = \
+#                        self._hyperparams['pos_body_offset'][i][j]
+#
+#                if 'quat_body_offset' in self._hyperparams:
+#                    self._model[i]['body_quat'][idx, :] = \
+#                            self._hyperparams['quat_body_offset'][i][j]
             self._world[i].set_model(self._model[i])
+            nq = self._model[0]['nq']
+            nv = self._model[0]['nv']
+            na = self._model[0]['na']
+            nsensordata = self._model[0]['nsensordata']
+            print(nsensordata)
             x0 = self._hyperparams['x0'][i]
-            idx = len(x0) // 2
-            data = {'qpos': x0[:idx], 'qvel': x0[idx:]}
+            data = {'qpos': x0[:nq], 'qvel': x0[nq:nq+nv], 'act': x0[nq+nv:nq+nv+na], 'sensordata': x0[nq+nv+na:nq+nv+na+nsensordata]}
             self._world[i].set_data(data)
             self._world[i].kinematics()
-
+        self.control_range_min = self._model[0]['actuator_ctrlrange'][:,0]
+        self.control_range_max = self._model[0]['actuator_ctrlrange'][:,1]
         self._joint_idx = list(range(self._model[0]['nq']))
-        self._vel_idx = [i + self._model[0]['nq'] for i in self._joint_idx]
-
+        self._vel_idx = [nq + i for i in range(nv)]
+        self._act_idx = [nq + nv + i for i in range(na)]
+        self._sensor_idx = [nq + nv + na + i for i in range(nsensordata)]
         # Initialize x0.
+
         self.x0 = []
         for i in range(self._hyperparams['conditions']):
             if END_EFFECTOR_POINTS in self.x_data_types:
@@ -88,11 +100,23 @@ class AgentMuJoCo(Agent):
                 self.x0.append(self._hyperparams['x0'][i])
 
         cam_pos = self._hyperparams['camera_pos']
-        for i in range(self._hyperparams['conditions']):
-            self._world[i].init_viewer(AGENT_MUJOCO['image_width'],
-                                       AGENT_MUJOCO['image_height'],
-                                       cam_pos[0], cam_pos[1], cam_pos[2],
-                                       cam_pos[3], cam_pos[4], cam_pos[5])
+
+    def squash(self, x, minval, maxval):
+        base = (maxval + minval)/2.0
+        swing = (maxval - minval)/2.0
+        return base + swing*x/np.sqrt(x**2 + swing**2)
+
+    def read_demo_txt(self, filename):
+        data =  []
+        f = open(filename, 'rb')
+        dat = f.read()
+        dat_split_bytime = dat.split('\n')
+        for dat_curr_time in dat_split_bytime:
+            dat_split_bystate = dat_curr_time.split('\t')
+            if len(dat_split_bystate)> 1:
+                float_state_split_data = [float(i) for i in dat_split_bystate]
+                data.append(float_state_split_data)
+        return np.asarray(data)
 
     def sample(self, policy, condition, verbose=True, save=True):
         """
@@ -105,9 +129,14 @@ class AgentMuJoCo(Agent):
             save: Whether or not to store the trial into the samples.
         """
         # Create new sample, populate first time step.
+        # raw_input()
+        # data = self.read_demo_txt('teleOpPickup_noGround/demo_neg7.control')[::15,:]
         new_sample = self._init_sample(condition)
         mj_X = self._hyperparams['x0'][condition]
+
         U = np.zeros([self.T, self.dU])
+        UO = np.zeros([self.T, self.dU])
+        UN  = np.zeros([self.T, self.dU])
         noise = generate_noise(self.T, self.dU, self._hyperparams)
         if np.any(self._hyperparams['x0var'][condition] > 0):
             x0n = self._hyperparams['x0var'] * \
@@ -121,6 +150,7 @@ class AgentMuJoCo(Agent):
                 self._model[condition]['body_pos'][idx, :] += \
                         var * np.random.randn(1, 3)
         self._world[condition].set_model(self._model[condition])
+
         for t in range(self.T):
             X_t = new_sample.get_X(t=t)
             obs_t = new_sample.get_obs(t=t)
@@ -128,6 +158,7 @@ class AgentMuJoCo(Agent):
             U[t, :] = mj_U
             if verbose:
                 self._world[condition].plot(mj_X)
+                time.sleep(0.01)
             if (t + 1) < self.T:
                 for _ in range(self._hyperparams['substeps']):
                     mj_X, _ = self._world[condition].step(mj_X, mj_U)
@@ -150,6 +181,12 @@ class AgentMuJoCo(Agent):
                    self._hyperparams['x0'][condition][self._joint_idx], t=0)
         sample.set(JOINT_VELOCITIES,
                    self._hyperparams['x0'][condition][self._vel_idx], t=0)
+        sample.set(ACTIVATIONS,
+                   self._hyperparams['x0'][condition][self._act_idx], t=0)
+
+        # sample.set(SENSORDATA,
+        #            self._hyperparams['x0'][condition][self._sensor_idx], t=0)
+
         self._data = self._world[condition].get_data()
         eepts = self._data['site_xpos'].flatten()
         sample.set(END_EFFECTOR_POINTS, eepts, t=0)
@@ -162,26 +199,27 @@ class AgentMuJoCo(Agent):
 
         # save initial image to meta data
         self._world[condition].plot(self._hyperparams['x0'][condition])
-        img = self._world[condition].get_image_scaled(self._hyperparams['image_width'],
-                                                      self._hyperparams['image_height'])
+
+        # img = self._world[condition].get_image_scaled(self._hyperparams['image_width'],
+        #                                               self._hyperparams['image_height'])
         # mjcpy image shape is [height, width, channels],
         # dim-shuffle it for later conv-net processing,
         # and flatten for storage
-        img_data = np.transpose(img["img"], (1, 0, 2)).flatten()
+        # img_data = np.transpose(img["img"], (1, 0, 2)).flatten()
         # if initial image is an observation, replicate it for each time step
-        if CONTEXT_IMAGE in self.obs_data_types:
-            sample.set(CONTEXT_IMAGE, np.tile(img_data, (self.T, 1)), t=None)
-        else:
-            sample.set(CONTEXT_IMAGE, img_data, t=None)
-        sample.set(CONTEXT_IMAGE_SIZE, np.array([self._hyperparams['image_channels'],
-                                                self._hyperparams['image_width'],
-                                                self._hyperparams['image_height']]), t=None)
+        # if CONTEXT_IMAGE in self.obs_data_types:
+        #     sample.set(CONTEXT_IMAGE, np.tile(img_data, (self.T, 1)), t=None)
+        # else:
+        #     sample.set(CONTEXT_IMAGE, img_data, t=None)
+        # sample.set(CONTEXT_IMAGE_SIZE, np.array([self._hyperparams['image_channels'],
+                                                # self._hyperparams['image_width'],
+                                                # self._hyperparams['image_height']]), t=None)
         # only save subsequent images if image is part of observation
-        if RGB_IMAGE in self.obs_data_types:
-            sample.set(RGB_IMAGE, img_data, t=0)
-            sample.set(RGB_IMAGE_SIZE, [self._hyperparams['image_channels'],
-                                        self._hyperparams['image_width'],
-                                        self._hyperparams['image_height']], t=None)
+        # if RGB_IMAGE in self.obs_data_types:
+        #     sample.set(RGB_IMAGE, img_data, t=0)
+        #     sample.set(RGB_IMAGE_SIZE, [self._hyperparams['image_channels'],
+        #                                 self._hyperparams['image_width'],
+        #                                 self._hyperparams['image_height']], t=None)
         return sample
 
     def _set_sample(self, sample, mj_X, t, condition):
@@ -195,6 +233,8 @@ class AgentMuJoCo(Agent):
         """
         sample.set(JOINT_ANGLES, np.array(mj_X[self._joint_idx]), t=t+1)
         sample.set(JOINT_VELOCITIES, np.array(mj_X[self._vel_idx]), t=t+1)
+        sample.set(ACTIVATIONS, 1e-6*np.array(mj_X[self._act_idx]), t=t+1)
+        # sample.set(SENSORDATA, np.array(mj_X[self._sensor_idx]), t=t+1)
         curr_eepts = self._data['site_xpos'].flatten()
         sample.set(END_EFFECTOR_POINTS, curr_eepts, t=t+1)
         prev_eepts = sample.get(END_EFFECTOR_POINTS, t=t)
@@ -205,24 +245,24 @@ class AgentMuJoCo(Agent):
             idx = site * 3
             jac[idx:(idx+3), :] = self._world[condition].get_jac_site(site)
         sample.set(END_EFFECTOR_POINT_JACOBIANS, jac, t=t+1)
-        if RGB_IMAGE in self.obs_data_types:
-            img = self._world[condition].get_image_scaled(self._hyperparams['image_width'],
-                                                          self._hyperparams['image_height'])
-            sample.set(RGB_IMAGE, np.transpose(img["img"], (2, 1, 0)).flatten(), t=t+1)
+        # if RGB_IMAGE in self.obs_data_types:
+        #     img = self._world[condition].get_image_scaled(self._hyperparams['image_width'],
+        #                                                   self._hyperparams['image_height'])
+        #     sample.set(RGB_IMAGE, np.transpose(img["img"], (2, 1, 0)).flatten(), t=t+1)
 
-    def _get_image_from_obs(self, obs):
-        imstart = 0
-        imend = 0
-        image_channels = self._hyperparams['image_channels']
-        image_width = self._hyperparams['image_width']
-        image_height = self._hyperparams['image_height']
-        for sensor in self._hyperparams['obs_include']:
-            # Assumes only one of RGB_IMAGE or CONTEXT_IMAGE is present
-            if sensor == RGB_IMAGE or sensor == CONTEXT_IMAGE:
-                imend = imstart + self._hyperparams['sensor_dims'][sensor]
-                break
-            else:
-                imstart += self._hyperparams['sensor_dims'][sensor]
-        img = obs[imstart:imend]
-        img = img.reshape((image_width, image_height, image_channels))
-        return img
+    # def _get_image_from_obs(self, obs):
+    #     imstart = 0
+    #     imend = 0
+    #     image_channels = self._hyperparams['image_channels']
+    #     image_width = self._hyperparams['image_width']
+    #     image_height = self._hyperparams['image_height']
+    #     for sensor in self._hyperparams['obs_include']:
+    #         # Assumes only one of RGB_IMAGE or CONTEXT_IMAGE is present
+    #         if sensor == RGB_IMAGE or sensor == CONTEXT_IMAGE:
+    #             imend = imstart + self._hyperparams['sensor_dims'][sensor]
+    #             break
+    #         else:
+    #             imstart += self._hyperparams['sensor_dims'][sensor]
+    #     img = obs[imstart:imend]
+    #     img = img.reshape((image_width, image_height, image_channels))
+    #     return img

@@ -54,6 +54,10 @@ class TfPolicy(Policy):
             u = action_mean + self.chol_pol_covar.T.dot(noise)
         return u[0]  # the DAG computations are batched by default, but we use batch size 1.
 
+    def act_sep(self, x, obs, t, noise=None):
+        return act(self, x, obs, t, noise), un
+
+        
     def pickle_policy(self, deg_obs, deg_action, checkpoint_path, goal_state=None, should_hash=False):
         """
         We can save just the policy if we are only interested in running forward at a later point

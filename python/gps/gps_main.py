@@ -1,7 +1,7 @@
 """ This file defines the main object that runs experiments. """
 
 import matplotlib as mpl
-mpl.use('Qt4Agg')
+#mpl.use('Qt4Agg')
 
 import logging
 import imp
@@ -12,14 +12,21 @@ import copy
 import argparse
 import threading
 import time
-
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import plot, ion, show
 # Add gps/python to path so that imports work.
 sys.path.append('/'.join(str.split(__file__, '/')[:-2]))
 from gps.gui.gps_training_gui import GPSTrainingGUI
 from gps.utility.data_logger import DataLogger
 from gps.sample.sample_list import SampleList
-
+from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
+        END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES, \
+        END_EFFECTOR_POINT_JACOBIANS, ACTION, RGB_IMAGE, RGB_IMAGE_SIZE, \
+        CONTEXT_IMAGE, CONTEXT_IMAGE_SIZE, ACTIVATIONS, ACTION_OPEN, ACTION_NOISE, SENSORDATA
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+import struct
+import pickle
 
 
 class GPSMain(object):
@@ -44,6 +51,25 @@ class GPSMain(object):
 
         config['algorithm']['agent'] = self.agent
         self.algorithm = config['algorithm']['type'](config['algorithm'])
+        self.f1 = plt.figure()
+        self.f1.canvas.set_window_title('GPS State/Action')
+        self.af1 = self.f1.add_subplot(311)
+        self.af2 = self.f1.add_subplot(312)
+        self.af3 = self.f1.add_subplot(313)
+        #self.af4 = self.f1.add_subplot(414)
+
+        # Cost plots
+        self.all_costs = self.algorithm.cost[0]._costs
+       	cost_num = len(self.all_costs)
+       	self.f2 = plt.figure()
+        self.f2.canvas.set_window_title('GPS Cost')
+       	self.f2figs = [None]*(cost_num+1)
+       	for fig_num in range(cost_num):
+        	self.f2figs[fig_num] = self.f2.add_subplot(cost_num+1, 1, fig_num+1)
+        self.f2figs[cost_num] = self.f2.add_subplot(cost_num+1, 1, cost_num+1)
+        self.f2figs[cost_num].set_xlim([-1, self._hyperparams['iterations']])
+        plt.draw()
+        plt.show(block=False)
 
     def run(self, itr_load=None):
         """
@@ -54,21 +80,196 @@ class GPSMain(object):
         Returns: None
         """
         itr_start = self._initialize(itr_load)
+        print("in gps main")
+        
+        # maxlen = 115
+        # filenames = ['hand_controller_1_demo7.pkl', 
+        #             'hand_controller_2_demo0.pkl',
+        #             'hand_controller_3_demo35.pkl']
+        # # filenames = ['hand_controller_1_demo7.pkl', 
+        # #     'hand_controller_1_demo7.pkl',
+        # #     'hand_controller_1_demo7.pkl',
+        # #     'hand_controller_1_demo7.pkl']
+        # for demo_num in range(3):
+        #     traj_dist = self.data_logger.unpickle(filenames[demo_num])
+        #     len_curr = traj_dist.T
+        #     traj_dist_K_new = np.zeros((maxlen, traj_dist.K.shape[1], traj_dist.K.shape[2]))
+        #     traj_dist_k_new = np.zeros((maxlen, traj_dist.k.shape[1]))
+        #     traj_dist_pol_covar_new = np.zeros((maxlen, traj_dist.pol_covar.shape[1], traj_dist.pol_covar.shape[2]))
+        #     traj_dist_chol_pol_covar_new = np.zeros((maxlen, traj_dist.chol_pol_covar.shape[1], traj_dist.chol_pol_covar.shape[2]))
+        #     traj_dist_inv_pol_covar_new = np.zeros((maxlen, traj_dist.inv_pol_covar.shape[1], traj_dist.inv_pol_covar.shape[2]))
+
+        #     traj_dist_K_new[:len_curr, :, :] = traj_dist.K
+        #     traj_dist_K_new[len_curr:, :, :] = traj_dist.K[-1]
+        #     traj_dist_k_new[:len_curr, :] = traj_dist.k
+        #     traj_dist_k_new[len_curr:, :] = traj_dist.k[-1]
+        #     traj_dist_pol_covar_new[:len_curr, :, :] = traj_dist.pol_covar
+        #     traj_dist_pol_covar_new[len_curr:, :, :] = traj_dist.pol_covar[-1]
+        #     traj_dist_chol_pol_covar_new[:len_curr, :, :] = traj_dist.chol_pol_covar
+        #     traj_dist_chol_pol_covar_new[len_curr:, :, :] = traj_dist.chol_pol_covar[-1]
+        #     traj_dist_inv_pol_covar_new[:len_curr, :, :] = traj_dist.inv_pol_covar
+        #     traj_dist_inv_pol_covar_new[len_curr:, :, :] = traj_dist.inv_pol_covar[-1]
+        #     #do processing here
+        #     traj_dist.T = maxlen
+        #     traj_dist.K = traj_dist_K_new
+        #     traj_dist.k = traj_dist_k_new
+        #     traj_dist.pol_covar = traj_dist_pol_covar_new
+        #     traj_dist.chol_pol_covar = traj_dist_chol_pol_covar_new
+        #     traj_dist.inv_pol_covar = traj_dist_inv_pol_covar_new
+        #     self.algorithm.cur[demo_num].traj_distr = traj_dist
+
+        # import IPython
+        # IPython.embed()
+        
+
+        print("BOOOYEAHH: Experiment time =====================")
+        #import IPython
+        #IPython.embed()
+        
+        #To load
+        
+        # val_vars, scale, bias, x_idx, pol_var = pickle.load(open('weights.pkl', 'rb'))
+        # self.algorithm.policy_opt.var = pol_var
+        # self.algorithm.policy_opt.policy.scale = scale
+        # self.algorithm.policy_opt.policy.bias = bias
+        # self.algorithm.policy_opt.policy.x_idx = x_idx
+        # for v in self.algorithm.policy_opt.variables:
+        #     if v.name in val_vars:
+        #         print(v.name)
+        #         assign_op = v.assign(val_vars[v.name])
+        #         self.algorithm.policy_opt.sess.run(assign_op)
+        # import IPython
+        # IPython.embed()
 
         for itr in range(itr_start, self._hyperparams['iterations']):
             for cond in self._train_idx:
+                print("================ CONDITION:  " + str(cond))
                 for i in range(self._hyperparams['num_samples']):
+                    print("------------ Sample number: " + str(i))
                     self._take_sample(itr, cond, i)
+                    # print("starting things")
+                    #raw_input('go to next sample')
+            # self.agent.rest()
 
             traj_sample_lists = [
                 self.agent.get_samples(cond, -self._hyperparams['num_samples'])
                 for cond in self._train_idx
             ]
+            #import IPython
+            #IPython.embed()
+            # self.plot_x(copy.copy(traj_sample_lists))
+            self.plot_cost(copy.copy(traj_sample_lists), itr)
+
+            #import IPython
+            #IPython.embed()
             self._take_iteration(itr, traj_sample_lists)
-            pol_sample_lists = self._take_policy_samples()
-            self._log_data(itr, traj_sample_lists, pol_sample_lists)
+            
+            # pol_sample_lists = self._take_policy_samples()
+            # print("ITERATION" + str(itr))
+            #tbegin_plot = time.time()
+            #self.plot_x(copy.copy(traj_sample_lists))
+            #self.plot_cost(copy.copy(traj_sample_lists), itr)
+            #print("plotting took " + str( time.time() - tbegin_plot))
+
+            
+            #Saving weights
+            
+            # vars = {}
+            # for v in self.algorithm.policy_opt.variables:
+            #     vars[v.name] = self.algorithm.policy_opt.sess.run(v)
+            # data_dump =[vars, self.algorithm.policy_opt.policy.scale, self.algorithm.policy_opt.policy.bias,\
+            #                 self.algorithm.policy_opt.policy.x_idx, self.algorithm.policy_opt.var]
+            # with open('weights.pkl','wb') as f:
+            #     pickle.dump(data_dump, f)
+            
+
+            #Can test network here 
+            # sample = self.agent.sample(self.algorithm.policy_opt.policy, 0, verbose=True, save=False))
+            print "<< == TEST NETWORK == >"
+            # import IPython
+            # IPython.embed()
 
         self._end()
+
+    def test_network(self):
+        sample = self.agent.sample(self.algorithm.policy_opt.policy, 0, verbose=True, save=False)
+
+
+    def load_network(self, filename):
+        val_vars, scale, bias, x_idx, pol_var = pickle.load(open(filename, 'rb'))
+        self.algorithm.policy_opt.var = pol_var
+        self.algorithm.policy_opt.policy.scale = scale
+        self.algorithm.policy_opt.policy.bias = bias
+        self.algorithm.policy_opt.policy.x_idx = x_idx
+        for v in self.algorithm.policy_opt.variables:
+            if v.name in val_vars:
+                print(v.name)
+                assign_op = v.assign(val_vars[v.name])
+                self.algorithm.policy_opt.sess.run(assign_op)
+
+    def save_network(self, filename):
+        vars = {}
+        for v in self.algorithm.policy_opt.variables:
+            vars[v.name] = self.algorithm.policy_opt.sess.run(v)
+        data_dump =[vars, self.algorithm.policy_opt.policy.scale, self.algorithm.policy_opt.policy.bias,\
+                        self.algorithm.policy_opt.policy.x_idx, self.algorithm.policy_opt.var]
+        with open(filename,'wb') as f:
+            pickle.dump(data_dump, f)
+
+
+    def plot_x(self, traj_sample_lists):
+    	self.af1.clear()
+        self.af2.clear()
+        #self.af3.clear()
+        #self.af4.clear()
+        for sample_list in traj_sample_lists:
+            for sample in sample_list._samples:
+                x = sample.get_X()
+                # sensordata = sample.get(SENSORDATA)
+                u = sample.get_U()
+                # uo = sample.get(ACTION_OPEN)
+                # un = sample.get(ACTION_NOISE)
+                T, d = x.shape
+                u_d = u.shape[1]
+                iter_x = [70]
+                
+                for dim in iter_x:
+                    self.af1.plot(range(T), x[:, dim])
+                    self.af1.plot(range(T), self._hyperparams['demo_joints'][:, 70], color='black')
+                self.af1.set_ylabel('states')
+                for dim in range(1):
+                    self.af2.plot(range(T), self._hyperparams['demo_joints'][:, 70])
+                self.af2.set_ylabel('demos')
+                for dim in range(1):
+                    self.af3.plot(range(T), u[:, 36])
+                    self.af3.plot(range(T), self._hyperparams['demo_ctrl'][:, 10], color='black')
+                self.af3.set_ylabel('actions sent')
+        self.f1.canvas.draw()
+
+    def plot_cost(self, traj_sample_lists, itr):
+    	#for subplot_fig in self.f2figs:
+    	#	subplot_fig.clear()
+
+        costs = self.algorithm.cost[0]._costs
+        cost_num = len(costs)
+        for c_num in range(cost_num):
+            self.f2figs[c_num].clear()
+
+
+        sum_cost = 0.0
+        for sample_list in traj_sample_lists:
+            for sample in sample_list._samples:
+                x = sample.get_X()
+                T, d = x.shape
+                for c_num in range(cost_num):
+                    self.f2figs[c_num].plot(range(T), costs[c_num].eval(sample)[0])
+                    sum_cost += np.sum(costs[c_num].eval(sample)[0])
+                    self.f2figs[c_num].set_ylabel('cost '+str(c_num))
+                    self.f2figs[c_num].set_title('totalCost: '+str(sum_cost))
+        print("SUM COST " + str(sum_cost))
+        self.f2figs[-1].plot([itr],[sum_cost], marker='*', markersize=10)
+        self.f2.canvas.draw()
+
 
     def test_policy(self, itr, N):
         """
@@ -142,6 +343,7 @@ class GPSMain(object):
             i: Sample number.
         Returns: None
         """
+
         pol = self.algorithm.cur[cond].traj_distr
         if self.gui:
             self.gui.set_image_overlays(cond)   # Must call for each new cond.
@@ -360,8 +562,8 @@ def main():
         import numpy as np
         import matplotlib.pyplot as plt
 
-        random.seed(0)
-        np.random.seed(0)
+        random.seed(1)
+        np.random.seed(1)
 
         gps = GPSMain(hyperparams.config)
         if hyperparams.config['gui_on']:

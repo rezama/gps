@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from gps.algorithm.algorithm import Algorithm
-
+import time
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,26 +24,38 @@ class AlgorithmTrajOpt(Algorithm):
             self.cur[m].sample_list = sample_lists[m]
 
         # Update dynamics model using all samples.
+        t_start = time.time()
         self._update_dynamics()
+        t_dyn_finish = time.time()
+        print("DYNAMICS TOOK" + str(t_dyn_finish - t_start))
 
         self._update_step_size()  # KL Divergence step size.
-
+        t_ss_finish = time.time()
+        print("step size TOOK" + str(t_ss_finish - t_dyn_finish))
         # Run inner loop to compute new policies.
         for _ in range(self._hyperparams['inner_iterations']):
             self._update_trajectories()
+        t_update = time.time()
+        print("update traj TOOK" + str(t_update - t_ss_finish))
 
         self._advance_iteration_variables()
+        t_advance = time.time()
+        print("advance traj TOOK" + str(t_advance - t_update))
 
     def _update_step_size(self):
         """ Evaluate costs on samples, and adjust the step size. """
         # Evaluate cost function for all conditions and samples.
+        time_start = time.time()
         for m in range(self.M):
             self._eval_cost(m)
-
+        time_end = time.time()
+        print("COST EVAL took " + str(time_end - time_start))
         # Adjust step size relative to the previous iteration.
         for m in range(self.M):
             if self.iteration_count >= 1 and self.prev[m].sample_list:
                 self._stepadjust(m)
+        time_end_stepadjust = time.time()
+        print("STEP adjust took " + str(time_end_stepadjust - time_end))
 
     def _stepadjust(self, m):
         """

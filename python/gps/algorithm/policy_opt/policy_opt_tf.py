@@ -51,6 +51,7 @@ class PolicyOptTf(PolicyOpt):
             else:
                 self.x_idx = self.x_idx + list(range(i, i+dim))
             i += dim
+        self.variables = tf.trainable_variables()
         init_op = tf.initialize_all_variables()
         self.sess.run(init_op)
 
@@ -139,10 +140,10 @@ class PolicyOptTf(PolicyOpt):
             train_loss = self.solver(feed_dict, self.sess)
 
             average_loss += train_loss
-            if i % 500 == 0 and i != 0:
+            if i % 100 == 0 and i != 0:
                 LOGGER.debug('tensorflow iteration %d, average loss %f',
-                             i, average_loss / 500)
-                print ('supervised tf loss is ' + str(average_loss))
+                             i, average_loss / 100)
+                print ('supervised tf loss is ' + str(average_loss/100))
                 average_loss = 0
 
         # Keep track of tensorflow iterations for loading solver states.

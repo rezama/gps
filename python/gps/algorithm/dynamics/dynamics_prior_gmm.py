@@ -1,7 +1,7 @@
 """ This file defines the GMM prior for dynamics estimation. """
 import copy
 import logging
-
+import time
 import numpy as np
 
 from gps.algorithm.dynamics.config import DYN_PRIOR_GMM
@@ -95,7 +95,11 @@ class DynamicsPriorGMM(object):
         LOGGER.debug('Generating %d clusters for dynamics GMM.', K)
 
         # Update GMM.
+        print("GMM Started")
+        time1 = time.time()
         self.gmm.update(xux, K)
+        time2 = time.time()
+        print("TIME for GMM Is " + str(time2 - time1))
 
     def eval(self, Dx, Du, pts):
         """

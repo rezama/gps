@@ -1,5 +1,5 @@
 """ This file defines the base algorithm class. """
-
+import time
 import abc
 import copy
 import logging
@@ -37,13 +37,17 @@ class Algorithm(object):
         self.dU = self._hyperparams['dU'] = agent.dU
         self.dX = self._hyperparams['dX'] = agent.dX
         self.dO = self._hyperparams['dO'] = agent.dO
-
-        init_traj_distr = config['init_traj_distr']
-        init_traj_distr['x0'] = agent.x0
-        init_traj_distr['dX'] = agent.dX
-        init_traj_distr['dU'] = agent.dU
+        if isinstance(config['init_traj_distr'], list):
+            for it in config['init_traj_distr']:
+                it['x0'] = agent.x0
+                it['dX'] = agent.dX
+                it['dU'] = agent.dU
+        else:
+            init_traj_distr = config['init_traj_distr']
+            init_traj_distr['x0'] = agent.x0
+            init_traj_distr['dX'] = agent.dX
+            init_traj_distr['dU'] = agent.dU
         del self._hyperparams['agent']  # Don't want to pickle this.
-
         # IterationData objects for each condition.
         self.cur = [IterationData() for _ in range(self.M)]
         self.prev = [IterationData() for _ in range(self.M)]
@@ -52,18 +56,32 @@ class Algorithm(object):
             self.cur[m].traj_info = TrajectoryInfo()
             dynamics = self._hyperparams['dynamics']
             self.cur[m].traj_info.dynamics = dynamics['type'](dynamics)
-            init_traj_distr = extract_condition(
-                self._hyperparams['init_traj_distr'], self._cond_idx[m]
-            )
-            self.cur[m].traj_distr = init_traj_distr['type'](init_traj_distr)
+            if isinstance(config['init_traj_distr'], list):
+                init_traj_distr = extract_condition(
+                    self._hyperparams['init_traj_distr'][m], self._cond_idx[m]
+                )
+                self.cur[m].traj_distr = init_traj_distr['type'](init_traj_distr)
+            else:
+                init_traj_distr = extract_condition(
+                    self._hyperparams['init_traj_distr'], self._cond_idx[m]
+                )
+                self.cur[m].traj_distr = init_traj_distr['type'](init_traj_distr)
+            
 
         self.traj_opt = hyperparams['traj_opt']['type'](
             hyperparams['traj_opt']
         )
-        self.cost = [
-            hyperparams['cost']['type'](hyperparams['cost'])
-            for _ in range(self.M)
-        ]
+
+        if isinstance(hyperparams['cost'], list):
+            self.cost = [
+                hc['type'](hc)
+                for hc in hyperparams['cost']
+            ]
+        else:
+            self.cost = [
+                hyperparams['cost']['type'](hyperparams['cost'])
+                for _ in range(self.M)
+            ]
         self.base_kl_step = self._hyperparams['kl_step']
 
     @abc.abstractmethod
@@ -81,10 +99,13 @@ class Algorithm(object):
                 self.prev[cond].traj_info.dynamics = \
                         self.cur[cond].traj_info.dynamics.copy()
             cur_data = self.cur[cond].sample_list
+            time1 = time.time()            
             self.cur[cond].traj_info.dynamics.update_prior(cur_data)
-
+            time2 = time.time()
+            print("Update prior " + str(time2 - time1))
             self.cur[cond].traj_info.dynamics.fit(cur_data)
-
+            time3 = time.time()
+            print("Dynamics fit " + str(time3 - time2))
             init_X = cur_data.get_X()[:, 0, :]
             x0mu = np.mean(init_X, axis=0)
             self.cur[cond].traj_info.x0mu = x0mu
@@ -94,12 +115,16 @@ class Algorithm(object):
             )
 
             prior = self.cur[cond].traj_info.dynamics.get_prior()
+            time4 = time.time()
+            print("Get prior " + str(time4 - time3))
             if prior:
                 mu0, Phi, priorm, n0 = prior.initial_state()
                 N = len(cur_data)
                 self.cur[cond].traj_info.x0sigma += \
                         Phi + (N*priorm) / (N+priorm) * \
                         np.outer(x0mu-mu0, x0mu-mu0) / (N+n0)
+                time5 = time.time()
+                print("x0 sigma " + str(time5 - time4))
 
     def _update_trajectories(self):
         """

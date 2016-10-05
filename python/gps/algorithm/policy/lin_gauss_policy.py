@@ -38,9 +38,24 @@ class LinearGaussianPolicy(Policy):
             t: Time step.
             noise: Action noise. This will be scaled by the variance.
         """
-        u = self.K[t].dot(x) + self.k[t]
-        u += self.chol_pol_covar[t].T.dot(noise)
+        uo = self.K[t].dot(x) + self.k[t]
+        un = self.chol_pol_covar[t].T.dot(noise)
+        u = uo + un
         return u
+
+    def act_sep(self, x, obs, t, noise=None):
+        """
+        Return an action for a state.
+        Args:
+            x: State vector.
+            obs: Observation vector.
+            t: Time step.
+            noise: Action noise. This will be scaled by the variance.
+        """
+        uo = self.K[t].dot(x) + self.k[t]
+        un = self.chol_pol_covar[t].T.dot(noise)
+        u = uo + un
+        return uo, un
 
     def fold_k(self, noise):
         """

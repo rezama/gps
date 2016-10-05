@@ -43,28 +43,33 @@ class AlgorithmBADMM(Algorithm):
         """
         for m in range(self.M):
             self.cur[m].sample_list = sample_lists[m]
-
-        self._set_interp_values()
-        self._update_dynamics()  # Update dynamics model using all sample.
+        print("start interp")
+        #self._set_interp_values()
+        print("update dynamics")
+        #self._update_dynamics()  # Update dynamics model using all sample.
+        print("update policy samples")
         self._update_policy_samples()  # Choose samples to use with the policy.
-        self._update_step_size()  # KL Divergence step size.
-
+        print("update step size")
+        #self._update_step_size()  # KL Divergence step size.
+        print("inner iters start")
         # Run inner loop to compute new policies.
         for inner_itr in range(self._hyperparams['inner_iterations']):
             #TODO: Could start from init controller.
             if self.iteration_count > 0 or inner_itr > 0:
                 # Update the policy.
                 self._update_policy(self.iteration_count, inner_itr)
-            for m in range(self.M):
-                self._update_policy_fit(m)  # Update policy priors.
-            if self.iteration_count > 0 or inner_itr > 0:
-                step = (inner_itr == self._hyperparams['inner_iterations'] - 1)
+            #for m in range(self.M):
+            #    self._update_policy_fit(m)  # Update policy priors.
+            #if self.iteration_count > 0 or inner_itr > 0:
+            #    step = (inner_itr == self._hyperparams['inner_iterations'] - 1)
                 # Update dual variables.
-                for m in range(self.M):
-                    self._policy_dual_step(m, step=step)
-            self._update_trajectories()
+            #    for m in range(self.M):
+            #        self._policy_dual_step(m, step=step)
+            #self._update_trajectories()
 
-        self._advance_iteration_variables()
+        #self._advance_iteration_variables()
+        #import IPython
+        #IPython.embed()
 
     def _set_interp_values(self):
         """
