@@ -94,3 +94,11 @@ MUJOCO_LOG.TXT
 experiments/*/data_files/
 experiments/*/log.txt
 .previous_experiment
+
+
+#demo files
+demonstrations/*
+teleOp*
+
+# svn
+.svn
