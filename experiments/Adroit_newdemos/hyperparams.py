@@ -100,26 +100,16 @@ key_id = 0
 #matfilenames = ['teleOpPickUp_noGround_180Coverage/key7(0Hold=15)(t=18544).mat']
 #matfilenames = ['teleOpPickUp_noGround_180Coverage/key8(0Hold=15)(t=16382).mat']
 #matfilenames = ['teleOpPickUp_noGround_180Coverage/key9(0Hold=15)(t=7522).mat']
-#matfilenames = ['demonstration/teleOpPickUp_noGround_180Coverage/key0(0Hold=15)(t=45600).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key1(0Hold=15)(t=19170).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key2(0Hold=15)(t=5978).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key3(0Hold=15)(t=2222).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key4(0Hold=15)(t=20600).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key5(0Hold=15)(t=23555).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key6(0Hold=15)(t=21466).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key7(0Hold=15)(t=18544).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key8(0Hold=15)(t=16382).mat',
-#                'demonstration/teleOpPickUp_noGround_180Coverage/key9(0Hold=15)(t=7522).mat']
-matfilenames = ['demonstrations/teleOpPickUp_noGround_180Coverage/key0(0Hold=15)(maxT=2010)(t=45600).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key1(0Hold=15)(maxT=2010)(t=19170).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key2(0Hold=15)(maxT=2010)(t=5978).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key3(0Hold=15)(maxT=2010)(t=2222).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key4(0Hold=15)(maxT=2010)(t=20600).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key5(0Hold=15)(maxT=2010)(t=23555).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key6(0Hold=15)(maxT=2010)(t=21466).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key7(0Hold=15)(maxT=2010)(t=18544).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key8(0Hold=15)(maxT=2010)(t=16382).mat',
-                'demonstrations/teleOpPickUp_noGround_180Coverage/key9(0Hold=15)(maxT=2010)(t=7522).mat']
+matfilenames = ['teleOpPickUp_noGround_180Coverage/key0(0Hold=15)(t=45600).mat',
+                'teleOpPickUp_noGround_180Coverage/key1(0Hold=15)(t=19170).mat',
+                'teleOpPickUp_noGround_180Coverage/key2(0Hold=15)(t=5978).mat',
+                'teleOpPickUp_noGround_180Coverage/key3(0Hold=15)(t=2222).mat',
+                'teleOpPickUp_noGround_180Coverage/key4(0Hold=15)(t=20600).mat',
+                'teleOpPickUp_noGround_180Coverage/key5(0Hold=15)(t=23555).mat',
+                'teleOpPickUp_noGround_180Coverage/key6(0Hold=15)(t=21466).mat',
+                'teleOpPickUp_noGround_180Coverage/key7(0Hold=15)(t=18544).mat',
+                'teleOpPickUp_noGround_180Coverage/key8(0Hold=15)(t=16382).mat',
+                'teleOpPickUp_noGround_180Coverage/key9(0Hold=15)(t=7522).mat']
 
 demos = []
 demo_ctrls = []
@@ -209,10 +199,11 @@ for i in common['test_conditions']:
 
 x0_init_full = copy.copy(x0_inits)
 
+
 # define agent ================================================================
 agent = {
     'type': AgentMuJoCo,
-    'filename': './demonstrations/teleOpPickUp_noGround_180Coverage/Adroit_TPpneHand(teleOp)131.xml',
+    'filename': './teleOpPickUp_noGround_180Coverage/Adroit_TPpneHand(teleOp)131.xml',
     'x0': x0_init_full,
     'dt': 0.03,
     'substeps': 15,
@@ -364,8 +355,8 @@ algorithm['policy_prior'] = {
 
 config = {
     'iterations': algorithm['iterations'],
-    'num_samples': 1,
-    'verbose_trials': 1,
+    'num_samples': 10,
+    'verbose_trials': 10,
     'verbose_policy_trials': 2,
     'common': common,
     'agent': agent,

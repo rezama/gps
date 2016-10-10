@@ -205,8 +205,12 @@ torque_cost = {
 
 state_costs = []
 lift_costs = []
+<<<<<<< HEAD
+
+=======
 import IPython
 IPython.embed()
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
 for demo in demos:
     cost_tgt = copy.copy(demo['qpos'])
     cost_tgt[:, :24] = copy.copy(demo['ctrl'])

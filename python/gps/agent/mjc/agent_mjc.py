@@ -76,11 +76,18 @@ class AgentMuJoCo(Agent):
             nv = self._model[0]['nv']
             na = self._model[0]['na']
             nsensordata = self._model[0]['nsensordata']
+<<<<<<< HEAD
+=======
             print(nsensordata)
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
             x0 = self._hyperparams['x0'][i]
             data = {'qpos': x0[:nq], 'qvel': x0[nq:nq+nv], 'act': x0[nq+nv:nq+nv+na], 'sensordata': x0[nq+nv+na:nq+nv+na+nsensordata]}
             self._world[i].set_data(data)
             self._world[i].kinematics()
+<<<<<<< HEAD
+
+=======
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
         self.control_range_min = self._model[0]['actuator_ctrlrange'][:,0]
         self.control_range_max = self._model[0]['actuator_ctrlrange'][:,1]
         self._joint_idx = list(range(self._model[0]['nq']))
@@ -88,7 +95,15 @@ class AgentMuJoCo(Agent):
         self._act_idx = [nq + nv + i for i in range(na)]
         self._sensor_idx = [nq + nv + na + i for i in range(nsensordata)]
         # Initialize x0.
+<<<<<<< HEAD
+        self.act_mins = np.zeros((self._hyperparams['sensor_dims'][ACTION],))
+        self.act_maxs = np.zeros((self._hyperparams['sensor_dims'][ACTION],))
+        for act in range(self._hyperparams['sensor_dims'][ACTION]):
+            self.act_mins[act] = self._world[0].min_act(act)
+            self.act_maxs[act] = self._world[0].max_act(act)
+=======
 
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
         self.x0 = []
         for i in range(self._hyperparams['conditions']):
             if END_EFFECTOR_POINTS in self.x_data_types:
@@ -100,6 +115,10 @@ class AgentMuJoCo(Agent):
                 self.x0.append(self._hyperparams['x0'][i])
 
         cam_pos = self._hyperparams['camera_pos']
+<<<<<<< HEAD
+        
+=======
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
 
     def squash(self, x, minval, maxval):
         base = (maxval + minval)/2.0
@@ -162,9 +181,13 @@ class AgentMuJoCo(Agent):
             if (t + 1) < self.T:
                 for _ in range(self._hyperparams['substeps']):
                     mj_X, _ = self._world[condition].step(mj_X, mj_U)
+
                 #TODO: Some hidden state stuff will go here.
                 self._data = self._world[condition].get_data()
                 self._set_sample(new_sample, mj_X, t, condition)
+            #print("stepping ===============")
+            #print t
+            #IPython.embed()
         new_sample.set(ACTION, U)
         if save:
             self._samples[condition].append(new_sample)
@@ -176,16 +199,26 @@ class AgentMuJoCo(Agent):
         Args:
             condition: Which condition to initialize.
         """
+
         sample = Sample(self)
         sample.set(JOINT_ANGLES,
                    self._hyperparams['x0'][condition][self._joint_idx], t=0)
         sample.set(JOINT_VELOCITIES,
                    self._hyperparams['x0'][condition][self._vel_idx], t=0)
+<<<<<<< HEAD
+        rescaled = (self._hyperparams['x0'][condition][self._act_idx]-np.array(self.act_mins))/(np.array(self.act_maxs) - np.array(self.act_mins))
+        sample.set(ACTIVATIONS, rescaled, t=0)
+        #sample.set(ACTIVATIONS,
+        #           self._hyperparams['x0'][condition][self._act_idx], t=0)
+        sample.set(SENSORDATA,
+                    self._hyperparams['x0'][condition][self._sensor_idx], t=0)
+=======
         sample.set(ACTIVATIONS,
                    self._hyperparams['x0'][condition][self._act_idx], t=0)
 
         # sample.set(SENSORDATA,
         #            self._hyperparams['x0'][condition][self._sensor_idx], t=0)
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
 
         self._data = self._world[condition].get_data()
         eepts = self._data['site_xpos'].flatten()
@@ -233,8 +266,16 @@ class AgentMuJoCo(Agent):
         """
         sample.set(JOINT_ANGLES, np.array(mj_X[self._joint_idx]), t=t+1)
         sample.set(JOINT_VELOCITIES, np.array(mj_X[self._vel_idx]), t=t+1)
+<<<<<<< HEAD
+        rescaled = (mj_X[self._act_idx] -np.array(self.act_mins))/(np.array(self.act_maxs) - np.array(self.act_mins))
+        sample.set(ACTIVATIONS, rescaled, t=t+1)
+
+
+        sample.set(SENSORDATA, np.array(mj_X[self._sensor_idx]), t=t+1)
+=======
         sample.set(ACTIVATIONS, 1e-6*np.array(mj_X[self._act_idx]), t=t+1)
         # sample.set(SENSORDATA, np.array(mj_X[self._sensor_idx]), t=t+1)
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
         curr_eepts = self._data['site_xpos'].flatten()
         sample.set(END_EFFECTOR_POINTS, curr_eepts, t=t+1)
         prev_eepts = sample.get(END_EFFECTOR_POINTS, t=t)

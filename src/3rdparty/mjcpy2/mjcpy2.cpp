@@ -163,6 +163,11 @@ public:
     void makeoptionstring(const char* name, char key, char* buf);
     void advance(void);
     void render(GLFWwindow* window);
+<<<<<<< HEAD
+    int min_act(int act_index);
+    int max_act(int act_index);
+=======
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
     ~PyMJCWorld2();
 private:
 //
@@ -953,12 +958,23 @@ PyMJCWorld2::~PyMJCWorld2() {
     
     
     
+<<<<<<< HEAD
+int PyMJCWorld2::min_act(int act_index) {
+    return m->actuator_user[m->nuser_actuator*act_index+3];
+}
+    
+int PyMJCWorld2::max_act(int act_index) {
+    return m->actuator_user[m->nuser_actuator*act_index+4];
+}
+=======
 
     
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
     
 int StateSize(mjModel* m) {
     return m->nq + m->nv + m->na + m->nsensordata;
 }
+
 void GetState(mjtNum* ptr, const mjModel* m, const mjData* d) {
     mju_copy(ptr, d->qpos, m->nq);
     ptr += m->nq;
@@ -1135,6 +1151,11 @@ BOOST_PYTHON_MODULE(mjcpy) {
         .def("get_jac_site",&PyMJCWorld2::GetJacSite)
         .def("kinematics",&PyMJCWorld2::Kinematics)
         .def("set_num_steps",&PyMJCWorld2::SetNumSteps)
+<<<<<<< HEAD
+        .def("min_act",&PyMJCWorld2::min_act)
+        .def("max_act",&PyMJCWorld2::max_act)
+=======
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
         ;
 
 

@@ -155,6 +155,10 @@ class GPSMain(object):
                 self.agent.get_samples(cond, -self._hyperparams['num_samples'])
                 for cond in self._train_idx
             ]
+<<<<<<< HEAD
+            self.plot_x(copy.copy(traj_sample_lists))
+            self.plot_cost(copy.copy(traj_sample_lists), itr)
+=======
             #import IPython
             #IPython.embed()
             # self.plot_x(copy.copy(traj_sample_lists))
@@ -162,6 +166,7 @@ class GPSMain(object):
 
             #import IPython
             #IPython.embed()
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
             self._take_iteration(itr, traj_sample_lists)
             
             # pol_sample_lists = self._take_policy_samples()
@@ -185,9 +190,16 @@ class GPSMain(object):
 
             #Can test network here 
             # sample = self.agent.sample(self.algorithm.policy_opt.policy, 0, verbose=True, save=False))
+<<<<<<< HEAD
+            print "<< == TEST NETWORK: Begin == >"
+            # import IPython
+            # IPython.embed()
+            print "<< == TEST NETWORK: End  == >"
+=======
             print "<< == TEST NETWORK == >"
             # import IPython
             # IPython.embed()
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
 
         self._end()
 
@@ -231,6 +243,21 @@ class GPSMain(object):
                 # un = sample.get(ACTION_NOISE)
                 T, d = x.shape
                 u_d = u.shape[1]
+<<<<<<< HEAD
+                iter_x = range(60,100)
+                
+                for dim in iter_x:
+                    self.af1.plot(range(T), x[:, dim])
+                    #self.af1.plot(range(T), self._hyperparams['demo_joints'][:, 70], color='black')
+                self.af1.set_ylabel('states')
+                #for dim in range(1):
+                    #self.af2.plot(range(T), self._hyperparams['demo_joints'][:, 70])
+                #self.af2.set_ylabel('demos')
+                #for dim in range(1):
+                #    self.af3.plot(range(T), u[:, 36])
+                 #   self.af3.plot(range(T), self._hyperparams['demo_ctrl'][:, 10], color='black')
+                #self.af3.set_ylabel('actions sent')
+=======
                 iter_x = [70]
                 
                 for dim in iter_x:
@@ -244,6 +271,7 @@ class GPSMain(object):
                     self.af3.plot(range(T), u[:, 36])
                     self.af3.plot(range(T), self._hyperparams['demo_ctrl'][:, 10], color='black')
                 self.af3.set_ylabel('actions sent')
+>>>>>>> e30fbf7d0b0ec1d5de44e113951d938f46529c70
         self.f1.canvas.draw()
 
     def plot_cost(self, traj_sample_lists, itr):
