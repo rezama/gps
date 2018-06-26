@@ -3,6 +3,9 @@ import logging
 
 import numpy as np
 
+from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
+        END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES, \
+        END_EFFECTOR_POINT_JACOBIANS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,3 +78,26 @@ AGENT_MUJOCO = {
 AGENT_BOX2D = {
     'render': True,
 }
+
+AGENT_VREP = {
+    'substeps': 1,
+    # V-REP remote api server port.
+    'server_port': 19997,
+    # Starting index of various state components in data vector returned from
+    # V-REP.
+    'sensor_idx': {
+        JOINT_ANGLES: 0,
+        JOINT_VELOCITIES: 7,
+        END_EFFECTOR_POINTS: 14,
+        END_EFFECTOR_POINT_VELOCITIES: 20,
+        END_EFFECTOR_POINT_JACOBIANS: 26,
+    },
+    'sensor_size': {
+        JOINT_ANGLES: 7,
+        JOINT_VELOCITIES: 7,
+        END_EFFECTOR_POINTS: 6,
+        END_EFFECTOR_POINT_VELOCITIES: 6,
+        END_EFFECTOR_POINT_JACOBIANS: 7 * 6,
+    },
+}
+
